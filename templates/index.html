@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vietnamese Emotion Classifier</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 28px;
+      }
+
+      .input-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        color: #555;
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      textarea {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 16px;
+        resize: vertical;
+        min-height: 120px;
+        transition: border-color 0.3s;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      button {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .result {
+        margin-top: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        display: none;
+      }
+
+      .result.show {
+        display: block;
+        animation: fadeIn 0.5s;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .result-item {
+        margin-bottom: 15px;
+      }
+
+      .result-label {
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 5px;
+      }
+
+      .result-value {
+        padding: 10px;
+        background: white;
+        border-radius: 5px;
+        color: #333;
+      }
+
+      .sentiment {
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 18px;
+      }
+
+      .sentiment.POSITIVE {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .sentiment.NEUTRAL {
+        background: #fff3cd;
+        color: #856404;
+      }
+
+      .sentiment.NEGATIVE {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .error {
+        color: #721c24;
+        background: #f8d7da;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+        display: none;
+      }
+
+      .error.show {
+        display: block;
+      }
+
+      .loading {
+        text-align: center;
+        color: #667eea;
+        margin-top: 20px;
+        display: none;
+      }
+
+      .loading.show {
+        display: block;
+      }
+
+      .test-results {
+        margin-top: 30px;
+        display: none;
+      }
+
+      .test-results.show {
+        display: block;
+        animation: fadeIn 0.5s;
+      }
+
+      .test-results h3 {
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 20px;
+      }
+
+      .test-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .test-text {
+        flex: 1;
+        color: #333;
+        font-size: 15px;
+      }
+
+      .test-sentiment {
+        display: inline-block;
+        padding: 6px 15px;
+        border-radius: 15px;
+        font-weight: 600;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      .test-sentiment.POSITIVE {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .test-sentiment.NEUTRAL {
+        background: #fff3cd;
+        color: #856404;
+      }
+
+      .test-sentiment.NEGATIVE {
+        background: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🇻🇳 Vietnamese Emotion Classifier</h1>
+
+      <div class="input-group">
+        <label for="textInput">Nhập văn bản tiếng Việt:</label>
+        <textarea
+          id="textInput"
+          placeholder="Ví dụ: Hôm nay tôi rất vui vì được gặp bạn bè..."
+        ></textarea>
+      </div>
+
+      <button id="classifyBtn" onclick="classifyText()">
+        Phân loại cảm xúc
+      </button>
+
+      <button
+        id="testBtn"
+        onclick="runTestSentences()"
+        style="
+          margin-top: 10px;
+          background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        "
+      >
+        Kiểm tra 10 câu mẫu
+      </button>
+
+      <button
+        id="historyBtn"
+        onclick="loadHistory()"
+        style="
+          margin-top: 10px;
+          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        "
+      >
+        Xem lịch sử phân loại
+      </button>
+
+      <div class="loading" id="loading">
+        <p>Đang xử lý...</p>
+      </div>
+
+      <div class="error" id="error"></div>
+
+      <div class="result" id="result">
+        <div class="result-item">
+          <div class="result-label">Văn bản đầu vào:</div>
+          <div class="result-value" id="inputText"></div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">Cảm xúc:</div>
+          <div>
+            <span class="sentiment" id="sentiment"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-results" id="testResults">
+        <h3>Kết quả kiểm tra 10 câu mẫu:</h3>
+        <div id="testResultsList"></div>
+      </div>
+
+      <div class="test-results" id="historyResults">
+        <h3>Lịch sử phân loại gần đây:</h3>
+        <div id="historyList"></div>
+      </div>
+    </div>
+
+    <script>
+      // LocalStorage functions
+      function saveToHistory(text, sentiment) {
+        const history = JSON.parse(
+          localStorage.getItem("sentimentHistory") || "[]"
+        );
+        history.unshift({
+          text: text,
+          sentiment: sentiment,
+          timestamp: new Date().toISOString(),
+        });
+        // Keep only last 50 records
+        if (history.length > 50) {
+          history.pop();
+        }
+        localStorage.setItem("sentimentHistory", JSON.stringify(history));
+      }
+
+      function getHistory(limit = 20) {
+        const history = JSON.parse(
+          localStorage.getItem("sentimentHistory") || "[]"
+        );
+        return history.slice(0, limit);
+      }
+
+      async function classifyText() {
+        const textInput = document.getElementById("textInput");
+        const text = textInput.value.trim();
+
+        const resultDiv = document.getElementById("result");
+        const errorDiv = document.getElementById("error");
+        const loadingDiv = document.getElementById("loading");
+        const classifyBtn = document.getElementById("classifyBtn");
+
+        // Hide previous results
+        resultDiv.classList.remove("show");
+        errorDiv.classList.remove("show");
+
+        if (!text) {
+          errorDiv.textContent = "Vui lòng nhập văn bản!";
+          errorDiv.classList.add("show");
+          return;
+        }
+
+        // Show loading
+        loadingDiv.classList.add("show");
+        classifyBtn.disabled = true;
+
+        try {
+          const response = await fetch("/classify", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ text: text }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Lỗi khi phân loại văn bản");
+          }
+
+          const data = await response.json();
+
+          // Save to localStorage
+          saveToHistory(data.input_text, data.sentiment);
+
+          // Display results
+          document.getElementById("inputText").textContent = data.input_text;
+          const sentimentSpan = document.getElementById("sentiment");
+          sentimentSpan.textContent = data.sentiment;
+          sentimentSpan.className = "sentiment " + data.sentiment;
+
+          resultDiv.classList.add("show");
+        } catch (error) {
+          errorDiv.textContent = "Đã xảy ra lỗi: " + error.message;
+          errorDiv.classList.add("show");
+        } finally {
+          loadingDiv.classList.remove("show");
+          classifyBtn.disabled = false;
+        }
+      }
+
+      // Allow Enter key to submit
+      document
+        .getElementById("textInput")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            classifyText();
+          }
+        });
+
+      // Test sentences
+      const testSentences = [
+        "Hôm nay tôi rất vui",
+        "Món ăn này dở quá",
+        "Thời tiết bình thường",
+        "Rat vui hom nay",
+        "Công việc ổn định",
+        "Phim này hay lắm",
+        "Tôi buồn vì thất bại",
+        "Ngày mai đi học",
+        "Cảm ơn bạn rất nhiều",
+        "Mệt mỏi quá hôm nay",
+      ];
+
+      async function runTestSentences() {
+        const testResultsDiv = document.getElementById("testResults");
+        const testResultsList = document.getElementById("testResultsList");
+        const loadingDiv = document.getElementById("loading");
+        const testBtn = document.getElementById("testBtn");
+        const resultDiv = document.getElementById("result");
+
+        // Hide single result
+        resultDiv.classList.remove("show");
+
+        // Clear previous results
+        testResultsList.innerHTML = "";
+        testResultsDiv.classList.remove("show");
+
+        // Show loading
+        loadingDiv.classList.add("show");
+        testBtn.disabled = true;
+
+        try {
+          // Process all sentences
+          for (let i = 0; i < testSentences.length; i++) {
+            const text = testSentences[i];
+
+            const response = await fetch("/classify", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ text: text }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Lỗi khi phân loại văn bản");
+            }
+
+            const data = await response.json();
+
+            // Save to localStorage
+            saveToHistory(data.input_text, data.sentiment);
+
+            // Create result item
+            const testItem = document.createElement("div");
+            testItem.className = "test-item";
+            testItem.innerHTML = `
+                            <div class="test-text">${i + 1}. ${
+              data.input_text
+            }</div>
+                            <span class="test-sentiment ${data.sentiment}">${
+              data.sentiment
+            }</span>
+                        `;
+            testResultsList.appendChild(testItem);
+          }
+
+          // Show results
+          testResultsDiv.classList.add("show");
+        } catch (error) {
+          const errorDiv = document.getElementById("error");
+          errorDiv.textContent = "Đã xảy ra lỗi: " + error.message;
+          errorDiv.classList.add("show");
+        } finally {
+          loadingDiv.classList.remove("show");
+          testBtn.disabled = false;
+        }
+      }
+
+      function loadHistory() {
+        const historyResultsDiv = document.getElementById("historyResults");
+        const historyList = document.getElementById("historyList");
+        const resultDiv = document.getElementById("result");
+        const testResultsDiv = document.getElementById("testResults");
+
+        // Hide other results
+        resultDiv.classList.remove("show");
+        testResultsDiv.classList.remove("show");
+
+        // Clear previous results
+        historyList.innerHTML = "";
+
+        const history = getHistory(20);
+
+        if (history.length === 0) {
+          historyList.innerHTML =
+            '<div class="test-item" style="justify-content: center;">Chưa có dữ liệu</div>';
+        } else {
+          history.forEach((record) => {
+            const historyItem = document.createElement("div");
+            historyItem.className = "test-item";
+            const date = new Date(record.timestamp);
+            const timeStr = date.toLocaleString("vi-VN");
+
+            historyItem.innerHTML = `
+                        <div style="flex: 1;">
+                            <div class="test-text">${record.text}</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 5px;">${timeStr}</div>
+                        </div>
+                        <span class="test-sentiment ${record.sentiment}">${record.sentiment}</span>
+                    `;
+            historyList.appendChild(historyItem);
+          });
+        }
+
+        // Show results
+        historyResultsDiv.classList.add("show");
+      }
+    </script>
+  </body>
+</html>
